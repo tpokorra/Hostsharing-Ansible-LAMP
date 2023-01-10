@@ -1,0 +1,40 @@
+---
+- hosts: lamp
+  become_user: "{{pac}}-{{user}}"
+  vars:
+    ansible_python_interpreter: /usr/bin/python3
+    # see https://docs.ansible.com/ansible/latest/user_guide/become.html#risks-of-becoming-an-unprivileged-user
+    ansible_common_remote_group: "{{pac}}"
+    ansible_remote_tmp: ~/.ansible/tmp
+
+  tasks:
+  - name: Create user, domain and database
+    import_tasks: tasks/hs_basis.yml
+
+  #################################
+  ## install requirements
+  #################################
+  - name: Install composer
+    import_tasks: tasks/hs_composer.yml
+
+  ##################################
+  ## configuration
+  ##################################
+
+  - name: upload the password for the mysql database
+    become: yes
+    template:
+      src: "templates/my.cnf"
+      dest: "/home/pacs/{{pac}}/users/{{user}}/.my.cnf"
+      mode: "700"
+
+  ########################
+  ## setup the apache site
+  ########################
+
+  - name: drop htdocs-ssl .htaccess
+    become: yes
+    become_user: "{{pac}}-{{user}}"
+    file:
+       path: "/home/pacs/{{pac}}/users/{{user}}/doms/{{domain}}/htdocs-ssl/.htaccess"
+       state: absent
